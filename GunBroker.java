@@ -1,9 +1,11 @@
 import java.io.*;
 import java.net.*;
-import java.util.regex.*;
+import java.util.*;
 
 public class GunBroker{
 
+
+	
 	public static void main(String[] args) throws IOException{
 
 		if(args.length == 0 || args[0].equalsIgnoreCase("-h")){
@@ -12,6 +14,7 @@ public class GunBroker{
 
 		}
 
+		
 
 		try{
 
@@ -108,4 +111,64 @@ public class GunBroker{
 		
 		}
 	}
+
+
+	public void loadConfig(){
+
+		//Load Settings from config
+		try{
+		File settings = new File("BrokerBot.conf");
+		Scanner scan = new Scanner(settings);
+		
+		}
+		catch(Exception e){
+			// If there is no config prompt creation
+		} 
+		return;
+	}
+
+	public void genConfig(){
+		//Generate the config file
+
+		return;
+	}
+
+
+	public void loadItems(){
+		//Try to load a list of items
+		try{
+			File itemList = new File("BrokerItems.txt");
+			Scanner scan = new Scanner(itemList);
+
+		}
+		catch(Exception e){
+			//If no items either ask to add or quit
+			System.out.println("");
+		}
+	}
+
+	public void saveItems(){
+		//Saves Items to a file
+
+	}
+
+	public void addItem(){
+
+
+	}
+
+	//Cellphone carrier Dictionary, Used for sending texts
+	public static Map<String, String> cellCarrierDic = new HashMap<String, String>();
+	cellCarrierDic.put("AT&T","@txt.att.net");
+	cellCarrierDic.put("Boost Mobile","@sms.myboostmovile.com");
+	cellCarrierDic.put("Cricket Wireless", "@mms.criketwireless.net");
+	cellCarrierDic.put("Google Projet Fi","@msg.fi.google.com");
+	cellCarrierDic.put("Sprint","@messaging.sprintpcs.com");
+	cellCarrierDic.put("T-Mobile","@tmomail.com");
+	cellCarrierDic.put("Verizon", "@vtext.com");
+	cellCarrierDic.put("Virgin Mobile", "@vmobl.com");
+
+
+
+
 }
