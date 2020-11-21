@@ -21,8 +21,7 @@ public class GunBroker{
 			System.out.println("java GunBroker <URL> \n\t URL must be a valid item listing on Gunbroker.com \n\t Used to display info about an auction or sale page.");
 			System.exit(1);
 		}
-*/
-
+	*/
 	
 		//Loading Important Files and vars
 		buildCarrierDict();
@@ -276,6 +275,7 @@ public class GunBroker{
 		//
 		boolean isValid = false;
 		String url = "";
+		String HTML = "";
 		while(!isValid){
 			System.out.print("\nPlease provide a link to the item you wish to track:\n\n>");
 			Scanner scan = new Scanner(System.in);
@@ -283,11 +283,10 @@ public class GunBroker{
 			Pattern GunBrokerPattern = Pattern.compile("https?://www.gunbroker.com/item/.*",Pattern.CASE_INSENSITIVE);
 			Matcher mm = GunBrokerPattern.matcher(url);
 			if(mm.find()){
-			
 				try{
 					URL target =  new URL(url);
 					InputStream in = target.openStream();
-					String HTML = new String(in.readAllBytes());
+					HTML = new String(in.readAllBytes());
 					System.out.println("Verifying URL...");
 					Pattern Pattern404 = Pattern.compile("<title>GunBroker.com - 404</title>",Pattern.CASE_INSENSITIVE);
 					Matcher m = Pattern404.matcher(HTML);
@@ -297,7 +296,6 @@ public class GunBroker{
 						System.out.println("The page you are looking for could not be found\nPlease check the URL and try again");
 						isValid = false;
 					}				 	
-
 				}
 				catch(MalformedURLException e){
 					System.out.println("Error: Invalid URL");	
@@ -307,9 +305,26 @@ public class GunBroker{
 				System.out.println("Please enter a URL for Gunbroker.com.\nThe URL for item listings looks like: https://www.gunbroker.com/item/12345678");
 			}
 		}
-		itemurls.add(url);
-		System.out.println("Item Added Succesfully!");
-		return;
+		//Creating an item object and verifying 
+		String title = reTitle(HTML);
+		String id = reID(HTML);
+		String endTime = reEndTime(HTML);
+		double price = rePrice(HTML);
+		boolean active = reActive(HTML);
+
+		System.out.println("Is this the correct item?(y/n)");
+		System.out.println("------------------------------\n");
+		System.out.print("\nTitle: " + title + "\nID: " + id + "\nPrice: $" + price + "\n\n>");
+		Scanner scan = new Scanner(System.in);
+		String choice = scan.nextLine();
+		if(choice.equalsIgnoreCase("y") || choice.equalsIgnoreCase("Yes")){
+			items.add(new Item(url, id, title, price, endTime, active));
+			itemurls.add(url);
+			System.out.println("Item Added Succesfully!");
+			return;
+		}
+		else
+			return;
 	}
 
 	public static void buildCarrierDict(){
@@ -324,7 +339,61 @@ public class GunBroker{
 		return;
 	}
 
-	public class Item{
+	public static String reTitle(String HTML){
+		System.out.println("Fetching Title...");
+		Pattern itemTitlePattern = Pattern.compile("title: \"(.*?)\"",Pattern.CASE_INSENSITIVE);
+		Matcher m = itemTitlePattern.matcher(HTML);
+		m.find();
+		String title = ""; 
+		if(m.groupCount() > 0) 
+			title = m.group(1);
+		return title;
+	}
+
+	public static String reID(String HTML){
+		System.out.println("Fetching ID...");
+		Pattern itemIDPattern = Pattern.compile("itemID: (\\d*)");
+		Matcher n = itemIDPattern.matcher(HTML); n.find();
+		String ID = "";
+		if(n.groupCount() > 0);
+		  ID = n.group(1);
+		return ID;
+	}
+
+	public static String reEndTime(String HTML){
+		System.out.println("Fetching end date...");
+		Pattern endingDatePattern = Pattern.compile("endingDate: \"(.*?)\""); 
+		Matcher l = endingDatePattern.matcher(HTML); 
+		l.find(); 
+		String endingDate = "";
+		if(l.groupCount() > 0)
+		 endingDate = l.group(1);
+		return endingDate;
+	}
+
+	public static Boolean reActive(String HTML){
+		System.out.println("Fetching activation status...");
+		Pattern activePattern = Pattern.compile("isActive: (.*?),");
+		Matcher m = activePattern.matcher(HTML);
+		m.find();
+		System.out.println(m.group(0));
+		if(m.groupCount() > 0 && m.group(1).equalsIgnoreCase("true"))
+			return true;
+		return false;
+	}
+
+	public static double rePrice(String HTML){
+		System.out.println("Fetching price");
+		Pattern pricePattern = Pattern.compile("price: ([^,]*)");
+		Matcher j = pricePattern.matcher(HTML);
+		j.find();
+		double price = -1.0;
+		if(j.groupCount() > 0)
+			price = Double.parseDouble(j.group(1));
+		return price;
+	}
+
+	public static class Item{
 
 		double price;
 		String url;
