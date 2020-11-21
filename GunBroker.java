@@ -55,7 +55,7 @@ public class GunBroker{
 				addItem();
 			}
 			if(choice == 2){
-				//Nothing yet
+				listItems();
 			}
 			if(choice == 3){
 				//Nothing yet
@@ -240,6 +240,17 @@ public class GunBroker{
 			while(scan.hasNextLine()){
 				itemurls.add(scan.nextLine());
 			}
+			for(String url : itemurls){
+					URL target =  new URL(url);
+					InputStream in = target.openStream();
+					String HTML = new String(in.readAllBytes());
+					String title = reTitle(HTML);
+					String id = reID(HTML);
+					String endTime = reEndTime(HTML);
+					double price = rePrice(HTML);
+					boolean active = reActive(HTML);
+					items.add(new Item(url, id, title, price, endTime, active));
+			}
 			System.out.println("Items Loaded Successfully!");
 			return;
 		}
@@ -263,11 +274,18 @@ public class GunBroker{
 
 	public static void deleteItem(){
 		//Gives the option to delete an item
-
+		// Will probably implement this after Final project as not 100% nessicary for mvp
 	}
 
 	public static void listItems(){
 		//Shows the current items
+		for(Item i : items){
+			System.out.println("Title: " + i.title);
+			System.out.println("ID: " + i.id);
+			System.out.println("URL: " + i.url);
+			System.out.println("Price : $" +i.price);
+			System.out.println("<------------------------------>");
+		}
 	}
 
 	//Potentally rework this for malformed url Exception & to verify if the site is actually Gunbroker
@@ -376,7 +394,6 @@ public class GunBroker{
 		Pattern activePattern = Pattern.compile("isActive: (.*?),");
 		Matcher m = activePattern.matcher(HTML);
 		m.find();
-		System.out.println(m.group(0));
 		if(m.groupCount() > 0 && m.group(1).equalsIgnoreCase("true"))
 			return true;
 		return false;
