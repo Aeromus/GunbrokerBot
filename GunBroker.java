@@ -2,8 +2,11 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.regex.*;
+import javax.activation.*;
+import javax.mail.internet.*;
+import javax.mail.*;
 
-public class GunBroker{
+public class GunBroker implements Runnable{
 
 	//Globals
 	static Map<String, String> cellCarrierDic = new HashMap<String, String>();
@@ -13,6 +16,7 @@ public class GunBroker{
 	static String phoneNum;
 	static String notifyEmail;
 	static String cellCarrier;
+	static boolean isrunning;
 
 	public static void main(String[] args) throws IOException{
 
@@ -34,6 +38,8 @@ public class GunBroker{
 
 		//Startup Titling
 		boolean end = false;
+		isrunning = false;
+		Thread bot = new Thread(new GunBroker());
 		String figletTitle = " ____            _                  ____        _   " 
 						   + "\n| __ ) _ __ ___ | | _____ _ __     | __ )  ___ | |_ "
 						   + "\n|  _ \\| '__/ _ \\| |/ / _ \\ '__|____|  _ \\ / _ \\| __|"
@@ -43,7 +49,7 @@ public class GunBroker{
 		System.out.println(figletTitle);
 		System.out.println("\n\t︻デ═一 Created By: Andrew Knoblach");
 
-		String menuString ="\n\nBrokerbot Menu:\n[1] Add items\n[2] List items\n[3] Delete items\n[4] Rebuild Config File \n[5] Run bot\n[6] Exit\n\n>";
+		String menuString ="\n\nBrokerbot Menu:\n[1] Add items\n[2] List items\n[3] Delete items\n[4] Rebuild Config File \n[5] Start/Stop bot\n[6] Exit\n\n>";
 
 		//Main menu loop
 		while(!end){
@@ -64,9 +70,19 @@ public class GunBroker{
 				genConfig();
 			}
 			if(choice == 5){
-				//Nothing yet
+				//Starting the bot
+				if(!isrunning){
+					bot.start();
+					isrunning = true;
+					System.out.println("Broker bot started running in the background!");
+				}
+				else{
+					isrunning = false;
+					System.out.println("Broker bot has stopped.");
+				}
 			}
 			if(choice == 6){
+				isrunning = false;
 				end = true;
 			}
 		}
@@ -142,9 +158,10 @@ public class GunBroker{
 		 * System.out.println("Error:\n\t" + e);
 		 * 
 		 * }
-		 */
-			
+		 */			
+
 		 saveItems();
+		 System.exit(0);
 	}
 
 
@@ -256,6 +273,7 @@ public class GunBroker{
 		}
 		catch(Exception e){
 			//If no items either ask to add or quit
+			System.out.println("ERROR: " + e);
 			System.out.println("No items to load!");
 		}
 	}
@@ -351,7 +369,7 @@ public class GunBroker{
 		cellCarrierDic.put("Cricket Wireless", "@mms.criketwireless.net");
 		cellCarrierDic.put("Google Projet Fi","@msg.fi.google.com");
 		cellCarrierDic.put("Sprint","@messaging.sprintpcs.com");
-		cellCarrierDic.put("T-Mobile","@tmomail.com");
+		cellCarrierDic.put("T-Mobile","@tmomail.net");
 		cellCarrierDic.put("Verizon", "@vtext.com");
 		cellCarrierDic.put("Virgin Mobile", "@vmobl.com");
 		return;
@@ -400,8 +418,10 @@ public class GunBroker{
 	}
 
 	public static double rePrice(String HTML){
-		System.out.println("Fetching price");
-		Pattern pricePattern = Pattern.compile("price: ([^,]*)");
+		System.out.println("Fetching price...");
+		//Had to change this patteren because it seems that the data tag at the top isn't always 100% accurate, hopefully this is
+		//Pattern pricePattern = Pattern.compile("price: ([^,]*)");
+		Pattern pricePattern = Pattern.compile("<div id=\"CurrentBid\" class=\"value\">\n\\$(\\d*.\\d*) <\\/div>");
 		Matcher j = pricePattern.matcher(HTML);
 		j.find();
 		double price = -1.0;
@@ -426,6 +446,103 @@ public class GunBroker{
 			this.endDate = endDate;
 			this.active = active;
 			this.price = price;
+		}
+	}
+
+	public static void checkItems() throws MalformedURLException, IOException, InterruptedException{
+
+		//Will later expand this to be much more exaustive but for terms of final project this is a good start.
+		//System.out.println("\n Checking items ....\n\n");
+		for(Item i :  items){
+			URL target =  new URL(i.url);
+			InputStream in = target.openStream();
+			String HTML = new String(in.readAllBytes());
+			double newPrice = rePrice(HTML);
+			boolean newActive = reActive(HTML);
+			if(newPrice > i.price){
+				//Ring terminal bell, Using this for debugging;
+				System.out.println((char)7);
+				sendEmailPriceAlert(i.title, i.url,newPrice);
+				sendTextPriceAlert(i.title,i.url,newPrice);
+				i.price = newPrice;
+			}
+			//Added this to try not to spam requests quickly, hopefully I don't piss off the website
+			Thread.sleep(10000);
+		}
+
+		return;
+	}
+
+	//
+	public static boolean sendEmailPriceAlert(String title, String url, double price){
+
+		String host = "localhost";
+
+		Properties properties = System.getProperties();
+		properties.setProperty("mail.smtp.host", host);
+		Session session = Session.getDefaultInstance(properties);
+		try {
+
+			Message message = new MimeMessage(session);
+			String body = "The price on " + title + " has changed to $" + price + "\n" + url;
+			message.setFrom(new InternetAddress(botEmail));
+			message.addRecipient(Message.RecipientType.TO, new InternetAddress(notifyEmail));
+			message.setSubject("Broker-Bot Alert!");
+			message.setText(body);
+
+			Transport.send(message);
+
+			return true;
+		}
+		catch(Exception e){
+
+			System.out.println("ERROR: "  + e);
+			return false;
+		}
+	}
+
+	public static boolean sendTextPriceAlert(String title,String url, double price){
+
+		String txtaddr = getTextAddress();
+		String host = "localhost";
+		Properties properties = System.getProperties();
+		properties.setProperty("mail.smtp.host", host);
+		Session session = Session.getDefaultInstance(properties);
+		try {
+			Message message = new MimeMessage(session);
+			String body = "The price on " + title + " has changed to $" + price + "\n"  + url;
+			message.setFrom(new InternetAddress(botEmail));
+			message.addRecipient(Message.RecipientType.TO, new InternetAddress(txtaddr));
+			message.setSubject("Broker-Bot");
+			message.setText(body);
+
+			Transport.send(message);
+			return true;
+		}
+		catch(Exception e){
+			System.out.println("ERROR: " +e);
+			return false;
+		}
+	}
+
+	public static String getTextAddress(){
+		return phoneNum + cellCarrierDic.get(cellCarrier);
+	}
+
+	public void run(){
+		//int loops = 0;
+		while(isrunning){
+			try{
+				//for Debugging
+				//System.out.println("____________________________________________________________________________________\n\n\n LOOPS = " + loops + "\n\n\n\n");
+				checkItems();
+				//5 minutes in Miliseconds, This may be subject to change later with settings or something
+				Thread.sleep(300000);
+				//loops++;
+			}
+			catch(Exception e){
+				System.out.println("ERROR: "  +e);
+			}
 		}
 	}
 }
